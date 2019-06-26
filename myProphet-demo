@@ -1,0 +1,41 @@
+import pandas as panda_data_frame
+from pandas import Series
+import numpy as num_py
+import pymysql
+import MySQLdb
+from pandas import DataFrame
+
+import sys
+from fbprophet import Prophet
+
+#print(sys.argv[0])
+#print(sys.argv[1])
+# create a data frame from the csv file,
+#df = panda_data_frame.read_csv('prophet-demo/inputs/instance_monitor_history_info2.csv')#instance_monitor_history_info2.csv
+
+#create a data frame from database
+db = pymysql.connect("localhost", "root", "v_lshunliu", "pythontest")
+cursor = db.cursor()
+cursor.execute("SELECT Timestamps,`Values` FROM mysql_instance_monitor_history_info WHERE InstanceId = 'cdb-axjoegxu' AND MetricName = 'CPUUseRate' AND Timestamps>DATE_SUB(CURDATE(), INTERVAL 7 DAY);")
+data = cursor.fetchall()
+data = num_py.array(data)
+df = DataFrame(data , columns=["ds","y"])
+df.to_csv("test1.csv" , index=False)
+df = panda_data_frame.read_csv('test1.csv')
+
+#for row in results:
+#num_py.array(results)
+#df = Series(results)
+#df = panda_data_frame.Series(results)
+#aa={'ds':[1,2,3],'y':[2,3,4]}
+
+df['y'] = num_py.float32(df['y'])
+df.head()
+
+prophet = Prophet()
+prophet.fit(df)
+future = prophet.make_future_dataframe(periods=7)
+forecast = prophet.predict(future)
+
+prophet.plot(forecast).savefig('cost-prediction.png')
+prophet.plot_components(forecast).savefig('cost-trends.png')
